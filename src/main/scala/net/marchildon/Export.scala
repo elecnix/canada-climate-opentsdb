@@ -50,12 +50,11 @@ case class Attribute(description: String, value: String)
 
 object Export extends App {
   val dateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm")
-  def extractFloat(s: String) = s match {
-    case "" => None
-    case _ =>  Some(s.replaceAll(",", "."))
+  def extractFloat(s: String) = {
+    case _ if !s.isEmpty =>  s.replaceAll(",", ".")
   }
-  val float = Some(extractFloat _)
-  val ignore = None
+  val float = extractFloat _
+  val ignore = Map.empty
   val extractors = List(
     ("air.temp", float),
     ("air.temp.ind", ignore),
@@ -79,7 +78,7 @@ object Export extends App {
   //new File(".").listFiles.filter(_.isDirectory).take(10).map(exportStation(_))
 
   using (new FileWriter("metric-defs.tsd"))  { writer =>
-    for ((name, Some(_)) <- extractors) writer.write(name + "\n")
+    for ((name, ex) <- extractors; if ex.isDefinedAt("1")) writer.write(name + "\n")
   }
   println("Created metric-defs.tsd. Metrics can be created like this:")
   println("for metric in `cat metric-defs.tsd` ; do tsdb mkmetric $metric ; done")
@@ -134,7 +133,7 @@ object Export extends App {
             "province=" + province,
             "quality=" + quality.replaceAllLiterally("**", "PARTNER")).mkString(" ")
           Some(values.zip(extractors)
-            .flatMap { case ((value), (name, extractor)) => extractor.map(f => f(value)).map(v => (name, v)) }
+            .flatMap { case ((value), (name, extractor)) if extractor.isDefinedAt(value) => (name, extractor(value)) }
             .map { case (name, value) => name + " " + ts + " " + value + " " + tags})
         }
         case _ => None
