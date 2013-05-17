@@ -1,6 +1,6 @@
 package net.marchildon
 
-import java.io.File
+import java.io.{File,FileWriter}
 import java.text.SimpleDateFormat
 
 /*
@@ -38,15 +38,75 @@ indicatif OMM
   Nombre de 5 chiffres attribué de façon permanente aux stations canadiennes par l'Organisation météorologique mondiale pour les identifier à l'échelle internationale. L'indicatif de l'OMM est un identificateur international attribué par le Service météorologique du Canada conformément aux normes de l'OMM aux stations qui transmettent des observations en formats météorologiques internationaux en temps réel.
 
 Identification TC:	YUL
+  def extractFloat(s: String) = s match {
+    case "" => None
+    case _ =>  Some(s.replaceAll(",", "."))
+  }
+  val float = extractFloat _
+
 */
 
 case class Attribute(description: String, value: String)
 
 object Export extends App {
   val dateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm")
-  println("Starting Export")
+  def extractFloat(s: String) = s match {
+    case "" => None
+    case _ =>  Some(s.replaceAll(",", "."))
+  }
+  val float = Some(extractFloat _)
+  val ignore = None
+  val extractors = List(
+    ("air.temp", float),
+    ("air.temp.ind", ignore),
+    ("dew.temp", float),
+    ("dew.temp.ind", ignore),
+    ("humidity", float),
+    ("humidity.ind", ignore),
+    ("wind.speed", float),
+    ("wind.speed.ind", ignore),
+    ("visibility", float),
+    ("visibility.ind", ignore),
+    ("pressure", float),
+    ("pressure.ind", ignore),
+    ("humidex", float),
+    ("humidex.ind", ignore),
+    ("wind.chill", float),
+    ("weather", ignore)
+  )
+
+  Console.err.println("Starting Export")
   //new File(".").listFiles.filter(_.isDirectory).take(10).map(exportStation(_))
-  readCsv(new File("51157/fre-hourly-2013-03.csv"))
+
+  using (new FileWriter("metric-defs.tsd"))  { writer =>
+    for ((name, Some(_)) <- extractors) writer.write(name + "\n")
+  }
+  println("Created metric-defs.tsd. Metrics can be created like this:")
+  println("for metric in `cat metric-defs.tsd` ; do tsdb mkmetric $metric ; done")
+
+  val file = new File("../51157/fre-hourly-2013-03.csv")
+  val outfileName = file.getAbsolutePath + ".tsd"
+  using (new FileWriter(outfileName))  { writer =>
+    Console.err.println("Reading " + file)
+    Console.err.println("Writing " + outfileName)
+    // Note: Parsing one line at a time even if CSV parser can parse all lines at once.
+    val country = "Canada"
+    var province = "Unknown"
+    var station = "Unknown"
+
+    for (line <- scala.io.Source.fromFile(file, "latin1").getLines) {
+      toTsd(CSV.parseRecord(line), country, province, station) match {
+        case Some(Attribute("Nom de la Station", name)) => { station = name }
+        case Some(Attribute("Province", name)) => { province = name}
+        case Some(datapoints : List[String]) => for (point <- datapoints) { writer.write(point); writer.write("\n") }
+        case other @ _ => { Console.err.println("Ignored: " + other) }
+      }
+      //toTsd(record).map(println(_.join("\n"))) // TODO
+      //println(toTsd(record))
+    }
+  }
+
+  def using[A <: {def close(): Unit}, B](param: A)(f: A => B): B = try { f(param) } finally { param.close() }
 
   private def parseDate(date: String) = {
     try {
@@ -56,43 +116,23 @@ object Export extends App {
     }
   }
 
-  private def exportStation(dir: File) : Int = {
-    println("Station: " + dir.getName)
-    dir.listFiles.map(readCsv(_))
-    return 0
-  }
+//  private def exportStation(dir: File) : Int = {
+//    Console.err.println("Station: " + dir.getName)
+//    dir.listFiles.map(readCsv(_))
+//    return 0
+//  }
 
   def toTsd(record: List[String], country: String, province: String, stationName: String) = record match {
     case List(key, value) => Some(Attribute(key, value))
     case List(dateStr, y, m, d, h, quality, values @ _*) => {
       parseDate(dateStr) match {
         case Some(date) => {
-          val ts = date.getTime
+          val ts = date.getTime / 1000
           val tags = Seq(
             "station=" + stationName.replaceAll(" ", "_"),
             "country=" + country,
             "province=" + province,
-            "quality=" + quality).mkString(" ")
-          val string = Some(identity[String] _)
-          val ignore = None
-          val extractors = List(
-            ("air.temp", string),
-            ("air.temp.ind", ignore),
-            ("dew.temp", string),
-            ("dew.temp.ind", ignore),
-            ("humidity", string),
-            ("humidity.ind", ignore),
-            ("wind.speed", string),
-            ("wind.speed.ind", ignore),
-            ("visibility", string),
-            ("visibility.ind", ignore),
-            ("pressure", string),
-            ("pressure.ind", ignore),
-            ("humidex", string),
-            ("humidex.ind", ignore),
-            ("wind.chill", string),
-            ("weather", ignore)
-          )
+            "quality=" + quality.replaceAllLiterally("**", "PARTNER")).mkString(" ")
           Some(values.zip(extractors)
             .flatMap { case ((value), (name, extractor)) => extractor.map(f => f(value)).map(v => (name, v)) }
             .map { case (name, value) => name + " " + ts + " " + value + " " + tags})
@@ -120,24 +160,6 @@ object Export extends App {
 //        }
 //      }
 //      case _ => "(not matched)"
-
-  private def readCsv(file: File) = {
-    println("Reading " + file)
-    // Note: Parsing one line at a time even if CSV parser can parse all lines at once.
-    var country = "Canada"
-    var province = "Unknown"
-    var station = "Unknown"
-    for (line <- scala.io.Source.fromFile(file, "latin1").getLines) {
-      toTsd(CSV.parseRecord(line), country, province, station) match {
-        case Some(Attribute("Nom de la Station", name)) => { station = name }
-        case Some(Attribute("Province", name)) => { province = name}
-        case Some(datapoints : List[String]) => println(datapoints)
-        case other @ _ => {println("Error: " + other)}
-      }
-      //toTsd(record).map(println(_.join("\n"))) // TODO
-      //println(toTsd(record))
-    }
-  }
 }
 
 import scala.util.parsing.combinator._
