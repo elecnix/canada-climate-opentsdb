@@ -1,0 +1,4 @@
+Scala project for parsing CSV files from climat.meteo.gc.ca and converting them to a format accepted by the OpenTSDB
+import tool.
+
+To run and test it with SBT use: 'sbt run'
