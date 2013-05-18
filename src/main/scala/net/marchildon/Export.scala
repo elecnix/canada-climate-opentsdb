@@ -50,11 +50,8 @@ case class Attribute(description: String, value: String)
 
 object Export extends App {
   val dateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm")
-  def extractFloat(s: String) = {
-    case _ if !s.isEmpty =>  s.replaceAll(",", ".")
-  }
-  val float = extractFloat _
-  val ignore = Map.empty
+  val float: PartialFunction[String, String] = { case s if !s.isEmpty =>  s.replaceAll(",", ".") }
+  val ignore: PartialFunction[String, String] = { case "asdf1234" =>  "" }
   val extractors = List(
     ("air.temp", float),
     ("air.temp.ind", ignore),
@@ -133,7 +130,7 @@ object Export extends App {
             "province=" + province,
             "quality=" + quality.replaceAllLiterally("**", "PARTNER")).mkString(" ")
           Some(values.zip(extractors)
-            .flatMap { case ((value), (name, extractor)) if extractor.isDefinedAt(value) => (name, extractor(value)) }
+            .flatMap { case (value, (name, extractor: PartialFunction[String,String])) => (name, extractor(value)) }
             .map { case (name, value) => name + " " + ts + " " + value + " " + tags})
         }
         case _ => None
