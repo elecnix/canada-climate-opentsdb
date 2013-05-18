@@ -3,7 +3,11 @@ package net.marchildon
 import java.io.{File,FileWriter}
 import java.text.SimpleDateFormat
 
-/*
+/**
+
+Reads files like this:
+
+<pre>
 Nom de la Station|CAMPBELL RIVER A
 Province|BRITISH COLUMBIA
 Latitude|49,95
@@ -22,33 +26,43 @@ ND|Non Disponible
 
 Date/Heure|Année|Mois|Jour|Heure|Qualité des Données|Temp (°C)|Temp Indicateur|Point de rosée (°C)|Point de rosée Indicateur|Hum. rel (%)|Hum. rel. Indicateur|Dir. du vent (10s deg)|Dir. du vent Indicateur|Vit. du vent (km/h)|Vit. du vent Indicateur|Visibilité (km)|Visibilité Indicateur|Pression à la station (kPa)|Pression à la station Indicateur|Hmdx|Hmdx Indicateur|Refroid. éolien|Refroid. éolien Indicateur|Temps
 1966-06-01 00:00|1966|06|01|00:00| |||||||||||||||||||
-...
+</pre>
 
+Legend:
+<blockquote>
 Identification Climat
   indicatif climatologique, indicatif de station, numéro de station
 
-  L'indicatif de station, ou indicatif climatologique ou numéro de station, est un nombre de 7 chiffres attribué par le Service météorologique du Canada à un site où sont prises des observations météorologiques officielles et qui constitue un identificateur permanent et unique.
+  L'indicatif de station, ou indicatif climatologique ou numéro de station, est un nombre de 7 chiffres attribué par le
+  Service météorologique du Canada à un site où sont prises des observations météorologiques officielles et qui constitue
+  un identificateur permanent et unique.
 
-  Le premier chiffre identifie la province où est située la station, le deuxième et le troisième la zone climatologique à l'intérieur de la province.
+  Le premier chiffre identifie la province où est située la station, le deuxième et le troisième la zone climatologique
+  à l'intérieur de la province.
 
-  Lorsqu'on cesse de prendre des observations à un site, le numéro n'est pas réaffecté à des stations subséquentes (qui peuvent ou non avoir des noms différents) à moins qu'on estime que les enregistrements des stations précédente et suivante peuvent être combinés à des fins de climatologie.
+  Lorsqu'on cesse de prendre des observations à un site, le numéro n'est pas réaffecté à des stations subséquentes (qui
+  peuvent ou non avoir des noms différents) à moins qu'on estime que les enregistrements des stations précédente et
+  suivante peuvent être combinés à des fins de climatologie.
 
 indicatif OMM
 
-  Nombre de 5 chiffres attribué de façon permanente aux stations canadiennes par l'Organisation météorologique mondiale pour les identifier à l'échelle internationale. L'indicatif de l'OMM est un identificateur international attribué par le Service météorologique du Canada conformément aux normes de l'OMM aux stations qui transmettent des observations en formats météorologiques internationaux en temps réel.
+  Nombre de 5 chiffres attribué de façon permanente aux stations canadiennes par l'Organisation météorologique mondiale
+  pour les identifier à l'échelle internationale. L'indicatif de l'OMM est un identificateur international attribué par
+  le Service météorologique du Canada conformément aux normes de l'OMM aux stations qui transmettent des observations
+  en formats météorologiques internationaux en temps réel.
 
 Identification TC:	YUL
-  def extractFloat(s: String) = s match {
-    case "" => None
-    case _ =>  Some(s.replaceAll(",", "."))
-  }
-  val float = extractFloat _
+</blockquote>
+
+Output is designed to be ingested by OpenTSDB. For example:
+
+<pre>
+air.temp 1362114000 20.0 station=MONTREAL_INTL country=Canada province=QUEBEC quality=PARTNER
+<pre>
 
 */
-
-case class Attribute(description: String, value: String)
-
 object Export extends App {
+  case class Attribute(description: String, value: String)
   val dateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm")
   val float: PartialFunction[String, String] = { case s if !s.isEmpty =>  s.replaceAll(",", ".") }
   val ignore: PartialFunction[String, String] = { case "asdf1234" =>  "" }
@@ -72,7 +86,14 @@ object Export extends App {
   )
 
   Console.err.println("Starting Export")
-  //new File(".").listFiles.filter(_.isDirectory).take(10).map(exportStation(_))
+
+  // TODO Pass file or directory as a parameter, and process files recursively
+  //new File(".").listFiles.filter(_.isDirectory).map(exportStation(_))
+  //  private def exportStation(dir: File) : Int = {
+  //    Console.err.println("Station: " + dir.getName)
+  //    dir.listFiles.map(readCsv(_))
+  //    return 0
+  //  }
 
   using (new FileWriter("metric-defs.tsd"))  { writer =>
     for ((name, ex) <- extractors; if ex.isDefinedAt("1")) writer.write(name + "\n")
@@ -97,8 +118,6 @@ object Export extends App {
         case Some(datapoints : List[String]) => for (point <- datapoints) { writer.write(point); writer.write("\n") }
         case other @ _ => { Console.err.println("Ignored: " + other) }
       }
-      //toTsd(record).map(println(_.join("\n"))) // TODO
-      //println(toTsd(record))
     }
   }
 
@@ -112,12 +131,6 @@ object Export extends App {
     }
   }
 
-//  private def exportStation(dir: File) : Int = {
-//    Console.err.println("Station: " + dir.getName)
-//    dir.listFiles.map(readCsv(_))
-//    return 0
-//  }
-
   def toTsd(record: List[String], country: String, province: String, stationName: String) = record match {
     case List(key, value) => Some(Attribute(key, value))
     case List(dateStr, y, m, d, h, quality, values @ _*) => {
@@ -130,7 +143,7 @@ object Export extends App {
             "province=" + province,
             "quality=" + quality.replaceAllLiterally("**", "PARTNER")).mkString(" ")
           Some(values.zip(extractors)
-            .flatMap { case (value, (name, extractor: PartialFunction[String,String])) => (name, extractor(value)) }
+            .flatMap { case (value, (name, extractor)) if extractor.isDefinedAt(value) => (name, extractor(value)) }
             .map { case (name, value) => name + " " + ts + " " + value + " " + tags})
         }
         case _ => None
@@ -138,24 +151,6 @@ object Export extends App {
     }
     case _ => None
   }
-//    record match {
-//      case List(dateStr, _, _, _, _, quality, temp, _, dewTemp, _, humidity, _, windDir, _, windSpeed, _, visibility, _, pressure, _, humidex, _, windFactor, weather) => {
-//        val ts = dateParser.parse(dateStr).getTime
-//        val tags = "country=CA province=UNKNOWN city=UNKNOWN"
-//        List(
-//          ("temp.air", temp),
-//          ("temp.dew", dewTemp)
-//            ("humidity", humidity),
-//          ("wind.speed", windSpeed),
-//          ("visibility", visibility),
-//          ("pressure", pressure),
-//          ("humidex", humidex),
-//          ("wind.chill", windFactor)
-//        ).map match {
-//          case (metric, value) => (metric, ts, value, tags).mkString(" ")
-//        }
-//      }
-//      case _ => "(not matched)"
 }
 
 import scala.util.parsing.combinator._
