@@ -16,40 +16,40 @@ Altitude|108,80
 Identification Climat|1021261
 Identification OMM|
 Identification TC|YBL
-Toutes les heures sont exprim��es en heure normale locale (HNL). Pour convertir l'heure locale en heure avanc��e de l'Est (HAE), ajoutez 1 heure s'il y a lieu.
+Toutes les heures sont exprimées en heure normale locale (HNL). Pour convertir l'heure locale en heure avancée de l'Est (HAE), ajoutez 1 heure s'il y a lieu.
 
-L��gende
-M|Donn��es Manquantes
-E|Valeur Estim��e
+Légende
+M|Données Manquantes
+E|Valeur Estimée
 ND|Non Disponible
-**|Donn��es fournies par un partenaire, non assujetties �� un r��vision par les Archives climatiques nationales du Canada
+**|Données fournies par un partenaire, non assujetties à un révision par les Archives climatiques nationales du Canada
 
-Date/Heure|Ann��e|Mois|Jour|Heure|Qualit�� des Donn��es|Temp (��C)|Temp Indicateur|Point de ros��e (��C)|Point de ros��e Indicateur|Hum. rel (%)|Hum. rel. Indicateur|Dir. du vent (10s deg)|Dir. du vent Indicateur|Vit. du vent (km/h)|Vit. du vent Indicateur|Visibilit�� (km)|Visibilit�� Indicateur|Pression �� la station (kPa)|Pression �� la station Indicateur|Hmdx|Hmdx Indicateur|Refroid. ��olien|Refroid. ��olien Indicateur|Temps
+Date/Heure|Année|Mois|Jour|Heure|Qualité des Données|Temp (°C)|Temp Indicateur|Point de rosée (°C)|Point de rosée Indicateur|Hum. rel (%)|Hum. rel. Indicateur|Dir. du vent (10s deg)|Dir. du vent Indicateur|Vit. du vent (km/h)|Vit. du vent Indicateur|Visibilité (km)|Visibilité Indicateur|Pression à la station (kPa)|Pression à la station Indicateur|Hmdx|Hmdx Indicateur|Refroid. éolien|Refroid. éolien Indicateur|Temps
 1966-06-01 00:00|1966|06|01|00:00| |||||||||||||||||||
 </pre>
 
 Legend:
 <blockquote>
 Identification Climat
-  indicatif climatologique, indicatif de station, num��ro de station
+  indicatif climatologique, indicatif de station, numéro de station
 
-  L'indicatif de station, ou indicatif climatologique ou num��ro de station, est un nombre de 7 chiffres attribu�� par le
-  Service m��t��orologique du Canada �� un site o�� sont prises des observations m��t��orologiques officielles et qui constitue
+  L'indicatif de station, ou indicatif climatologique ou numéro de station, est un nombre de 7 chiffres attribué par le
+  Service météorologique du Canada à un site où sont prises des observations météorologiques officielles et qui constitue
   un identificateur permanent et unique.
 
-  Le premier chiffre identifie la province o�� est situ��e la station, le deuxi��me et le troisi��me la zone climatologique
-  �� l'int��rieur de la province.
+  Le premier chiffre identifie la province où est située la station, le deuxième et le troisième la zone climatologique
+  à l'intérieur de la province.
 
-  Lorsqu'on cesse de prendre des observations �� un site, le num��ro n'est pas r��affect�� �� des stations subs��quentes (qui
-  peuvent ou non avoir des noms diff��rents) �� moins qu'on estime que les enregistrements des stations pr��c��dente et
-  suivante peuvent ��tre combin��s �� des fins de climatologie.
+  Lorsqu'on cesse de prendre des observations à un site, le numéro n'est pas réaffecté à des stations subséquentes (qui
+  peuvent ou non avoir des noms différents) à moins qu'on estime que les enregistrements des stations précédente et
+  suivante peuvent être combinés à des fins de climatologie.
 
 indicatif OMM
 
-  Nombre de 5 chiffres attribu�� de fa��on permanente aux stations canadiennes par l'Organisation m��t��orologique mondiale
-  pour les identifier �� l'��chelle internationale. L'indicatif de l'OMM est un identificateur international attribu�� par
-  le Service m��t��orologique du Canada conform��ment aux normes de l'OMM aux stations qui transmettent des observations
-  en formats m��t��orologiques internationaux en temps r��el.
+  Nombre de 5 chiffres attribué de façon permanente aux stations canadiennes par l'Organisation météorologique mondiale
+  pour les identifier à l'échelle internationale. L'indicatif de l'OMM est un identificateur international attribué par
+  le Service météorologique du Canada conformément aux normes de l'OMM aux stations qui transmettent des observations
+  en formats météorologiques internationaux en temps réel.
 
 Identification TC:	YUL
 </blockquote>
@@ -64,17 +64,9 @@ air.temp 1362114000 20.0 station=MONTREAL_INTL country=Canada province=QUEBEC qu
 object Export extends App {
   case class Attribute(description: String, value: String)
   val dateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm")
-  
-  //val float: PartialFunction[String, String] = { case s if !s.isEmpty =>  s.replaceAll(",", ".") }
-  
-  //val ignore: PartialFunction[String, String] = { case "asdf1234" =>  "" }
-  
   type Extractor = String => Option[String]
-  
   val float : Extractor = { case "" => None; case s  => Some(s.replaceAll(",", ".")) }
-  
   val ignore: Extractor = { _ => None }
-  
   val extractors = List(
     ("air.temp", float),
     ("air.temp.ind", ignore),
@@ -151,16 +143,8 @@ object Export extends App {
             "country=" + country,
             "province=" + province,
             "quality=" + quality.replaceAllLiterally("**", "PARTNER")).mkString(" ")
-          
-          /*
-          Some(values.zip(extractors)
-            .map { case (value, (name, extractor)) if extractor.isDefinedAt(value) => (name, extractor(value)) }
-            .map { case (name, value) => name + " " + ts + " " + value + " " + tags})
-          */
-
            Some { for( (value, (name, extractor)) <- values.zip(extractors);
                 x <- extractor(value) ) yield name + " " + ts + " " + x + " " + tags }
-               
         }
         case _ => None
       }
