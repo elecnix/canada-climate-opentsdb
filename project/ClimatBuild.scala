@@ -10,8 +10,9 @@ object ClimatBuild extends Build {
       name := "Climat",
       organization := "net.marchildon",
       version := "0.1-SNAPSHOT",
-      scalaVersion := "2.9.2"
+      scalaVersion := "2.9.2",
       // add other settings here
+      libraryDependencies += "com.novocode" % "junit-interface" % "0.8" % "test"
     )
   )
 }
