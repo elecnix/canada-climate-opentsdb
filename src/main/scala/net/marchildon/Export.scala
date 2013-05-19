@@ -86,6 +86,8 @@ object Export extends App {
     ("weather", ignore)
   )
 
+if(args.length==0) { // hack begins
+  
   Console.err.println("Starting Export")
 
   // TODO Pass file or directory as a parameter, and process files recursively
@@ -122,6 +124,8 @@ object Export extends App {
     }
   }
 
+} // hack ends
+  
   def using[A <: {def close(): Unit}, B](param: A)(f: A => B): B = try { f(param) } finally { param.close() }
 
   private def parseDate(date: String) = {

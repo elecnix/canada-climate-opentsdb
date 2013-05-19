@@ -12,23 +12,28 @@ class SimpleTest {
 
   @Test
   def export() {
-    val country = "Canada"
-    var province = "Unknown"
-    var station = "Unknown"
-    val writer = new StringWriter
-    using(Source.fromURL(this.getClass.getResource("/input.csv"))) { input =>
-      for (line <- input.getLines) {
-        toTsd(CSV.parseRecord(line), country, province, station) match {
-          case Some(Attribute("Nom de la Station", name)) => { station = name }
-          case Some(Attribute("Province", name)) => { province = name }
-          case Some(datapoints: List[String]) =>
-            for (point <- datapoints) { writer.write(point); writer.write("\n") }
-          case other @ _ => { Console.err.println("Ignored: " + other) }
+    Export.delayedInit {
+      
+      val country = "Canada"
+      var province = "Unknown"
+      var station = "Unknown"
+      val writer = new StringWriter
+      using(Source.fromURL(this.getClass.getResource("/input.csv"))) { input =>
+        for (line <- input.getLines) {
+          toTsd(CSV.parseRecord(line), country, province, station) match {
+            case Some(Attribute("Nom de la Station", name)) => { station = name }
+            case Some(Attribute("Province", name)) => { province = name }
+            case Some(datapoints: List[String]) =>
+              for (point <- datapoints) { writer.write(point); writer.write("\n") }
+            case other @ _ => { Console.err.println("Ignored: " + other) }
+          }
         }
       }
+      val exported = writer.toString()
+      println(exported)
+      
     }
-    val exported = writer.toString()
-    println(exported)
+    Export.main(Array("hack"))
   }
 
   @Test
@@ -39,24 +44,29 @@ class SimpleTest {
     }
     def csv(reader: Reader) = CSVReader.open(reader)
 
-    val country = "Canada"
-    var province = "Unknown"
-    var station = "Unknown"
-    val writer = new StringWriter
+    Export.delayedInit {
+      
+      val country = "Canada"
+      var province = "Unknown"
+      var station = "Unknown"
+      val writer = new StringWriter
 
-    using(Source.fromURL(this.getClass.getResource("/input.csv"))) { input =>
-      for (line <- csv(input.reader)) {
-        toTsd(line.toList, country, province, station) match {
-          case Some(Attribute("Nom de la Station", name)) => { station = name }
-          case Some(Attribute("Province", name)) => { province = name }
-          case Some(datapoints: List[String]) =>
-            for (point <- datapoints) { writer.write(point); writer.write("\n") }
-          case other @ _ => { Console.err.println("Ignored: " + other) }
+      using(Source.fromURL(this.getClass.getResource("/input.csv"))) { input =>
+        for (line <- csv(input.reader)) {
+          toTsd(line.toList, country, province, station) match {
+            case Some(Attribute("Nom de la Station", name)) => { station = name }
+            case Some(Attribute("Province", name)) => { province = name }
+            case Some(datapoints: List[String]) =>
+              for (point <- datapoints) { writer.write(point); writer.write("\n") }
+            case other @ _ => { Console.err.println("Ignored: " + other) }
+          }
         }
       }
+      val exported = writer.toString()
+      println(exported)
+      
     }
-    val exported = writer.toString()
-    println(exported)
+    Export.main(Array("hack"))
   }
 
 }
