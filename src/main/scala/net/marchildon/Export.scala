@@ -64,8 +64,9 @@ air.temp 1362114000 20.0 station=MONTREAL_INTL country=Canada province=QUEBEC qu
 object Export extends App {
   case class Attribute(description: String, value: String)
   val dateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm")
-  val float: PartialFunction[String, String] = { case s if !s.isEmpty =>  s.replaceAll(",", ".") }
-  val ignore: PartialFunction[String, String] = { case "asdf1234" =>  "" }
+  type Extractor = String => Option[String]
+  val float : Extractor = { case "" => None; case s  => Some(s.replaceAll(",", ".")) }
+  val ignore: Extractor = { _ => None }
   val extractors = List(
     ("air.temp", float),
     ("air.temp.ind", ignore),
@@ -96,7 +97,7 @@ object Export extends App {
   //  }
 
   using (new FileWriter("metric-defs.tsd"))  { writer =>
-    for ((name, ex) <- extractors; if ex.isDefinedAt("1")) writer.write(name + "\n")
+    for ((name, ex) <- extractors; x <- ex(1.toString())) writer.write(name + "\n")
   }
   println("Created metric-defs.tsd. Metrics can be created like this:")
   println("for metric in `cat metric-defs.tsd` ; do tsdb mkmetric $metric ; done")
@@ -142,9 +143,8 @@ object Export extends App {
             "country=" + country,
             "province=" + province,
             "quality=" + quality.replaceAllLiterally("**", "PARTNER")).mkString(" ")
-          Some(values.zip(extractors)
-            .flatMap { case (value, (name, extractor)) if extractor.isDefinedAt(value) => (name, extractor(value)) }
-            .map { case (name, value) => name + " " + ts + " " + value + " " + tags})
+           Some { for( (value, (name, extractor)) <- values.zip(extractors);
+                x <- extractor(value) ) yield name + " " + ts + " " + x + " " + tags }
         }
         case _ => None
       }

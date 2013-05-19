@@ -1,0 +1,18 @@
+Nom de la Station|CAMPBELL RIVER A
+Province|BRITISH COLUMBIA
+Latitude|49,95
+Longitude|-125,27
+Altitude|108,80
+Identification Climat|1021261
+Identification OMM|
+Identification TC|YBL
+Toutes les heures sont exprimées en heure normale locale (HNL). Pour convertir l'heure locale en heure avancée de l'Est (HAE), ajoutez 1 heure s'il y a lieu.
+
+Légende
+M|Données Manquantes
+E|Valeur Estimée
+ND|Non Disponible
+**|Données fournies par un partenaire, non assujetties à un révision par les Archives climatiques nationales du Canada
+
+Date/Heure|Année|Mois|Jour|Heure|Qualité des Données|Temp (°C)|Temp Indicateur|Point de rosée (°C)|Point de rosée Indicateur|Hum. rel (%)|Hum. rel. Indicateur|Dir. du vent (10s deg)|Dir. du vent Indicateur|Vit. du vent (km/h)|Vit. du vent Indicateur|Visibilité (km)|Visibilité Indicateur|Pression à la station (kPa)|Pression à la station Indicateur|Hmdx|Hmdx Indicateur|Refroid. éolien|Refroid. éolien Indicateur|Temps
+1966-06-01 00:00|1966|06|01|00:00| |||||||||||||||||||
